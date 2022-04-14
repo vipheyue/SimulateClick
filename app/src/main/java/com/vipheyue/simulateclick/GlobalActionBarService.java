@@ -16,11 +16,16 @@ package com.vipheyue.simulateclick;
 
 import android.accessibilityservice.AccessibilityService;
 import android.app.ActivityManager;
+import android.app.Service;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Build;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -29,20 +34,33 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 
 import java.util.List;
+
 import android.os.*;
 
+import com.vipheyue.simulateclick.send.SendDataIntentService;
+
 public class GlobalActionBarService extends AccessibilityService {
-    private static final String TAG = "无障碍";
-    private static final String COVID_no_test_status = "No test status";
-    private static final String COVID_cleared = "Cleared";
-    private static final String COVID_not_cleared = "Not cleared";
+    public static final String TAG = "无障碍";
+    public static int currentPhoneRingState = TelephonyManager.CALL_STATE_IDLE;
 
 
     @Override
     protected void onServiceConnected() {
-        servicema
-        Log.e(TAG, "onServiceConnected--->  safeEntry helper ok");
+        Log.e(TAG, "onServiceConnected--->  无障碍 helper ok 15");
 //        Toast.makeText(this, "safeEntry helper ok", Toast.LENGTH_SHORT).show();
+        // 注册监听器
+        TelephonyManager tm = (TelephonyManager) getSystemService(Service.TELEPHONY_SERVICE);
+        //设置监听
+        tm.listen(listener, PhoneStateListener.LISTEN_CALL_STATE);
+    }
+
+    private void toggleNotificationListenerService(Context context) {
+        PackageManager pm = context.getPackageManager();
+        pm.setComponentEnabledSetting(new ComponentName(context, QHBNotificationService.class),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+
+        pm.setComponentEnabledSetting(new ComponentName(context, QHBNotificationService.class),
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
     }
 
     @Override
@@ -51,89 +69,27 @@ public class GlobalActionBarService extends AccessibilityService {
 
 
         String pkn = String.valueOf(event.getPackageName());
-        if (pkn.equals("sg.gov.tech.safeentry")) {
-//            Log.e(TAG, "事件--->" + event);
+
+//        Log.e(TAG, "事件--->" + pkn + " class: " + event.getClassName().toString());
+        toggleNotificationListenerService(this); // 通知栏监听经常掉线强制打开
+
+
+        if (pkn.equals("com.xiaomi.aiasst.service") && "androidx.recyclerview.widget.RecyclerView".equals(event.getClassName().toString())) {
+
+
+//        if (pkn.equals("com.xiaomi.aiasst.service")) {
             AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
             if (nodeInfo == null) {
-                Log.w(TAG, "rootWindow为空");
+                Log.e(TAG, "rootWindow为空");
                 return;
             }
 
-            AccessibilityNodeInfo targetNode = AccessibilityHelper.findNodeInfosByText(nodeInfo, "Vaccination/COVID");
-
-            if (targetNode == null) {
-                Log.w(TAG, "当前safeentry 不是人员信息页面");
-                return;
-            } else {
-                Log.e(TAG, "当前safeentry 是人员信息页面 遍历信息");
-
-                /*
-                *
- index : 0   text: Vaccination/COVID test result for
-index : 1   text: S****007B
-index : 2   text: Vaccination status
-index : 3   text: Vaccinated
-index : 4   text: COVID test result
-index : 5   text: No test status
-index : 6   text: Is visitor entering the venue?
-index : 7   text: null
-index : 8   text: null
-
-                * */
-                AccessibilityNodeInfo parent = targetNode.getParent();
-                for (int i = 0; i < parent.getChildCount(); i++) {
-                    AccessibilityNodeInfo childNode = parent.getChild(i);
-                    Log.e(TAG, "index : " + i + "   text: " + childNode.getText());
-                }
-
-
-                String vaccinationStatusString = String.valueOf(parent.getChild(3).getText());
-                String COVIDResultString = String.valueOf(parent.getChild(5).getText());
-
-
-                boolean clickYes = false;
-
-                switch (vaccinationStatusString) {
-                    case "Vaccinated":
-                        if (COVIDResultString.equals(COVID_no_test_status)) {
-                            clickYes = true;
-                        }
-                        if (COVIDResultString.equals(COVID_cleared)) {
-                            clickYes = true;
-                        }
-                        if (COVIDResultString.equals(COVID_not_cleared)) {
-                            clickYes = false;
-                        }
-                        break;
-                    case "Not vaccinated":
-                        if (COVIDResultString.equals(COVID_no_test_status)) {
-                            clickYes = false;
-                        }
-                        if (COVIDResultString.equals(COVID_cleared)) {
-                            clickYes = true;
-                        }
-                        if (COVIDResultString.equals(COVID_not_cleared)) {
-                            clickYes = false;
-                        }
-                        break;
-                }
-//                try {
-//                    Thread.sleep(3000);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//                SafeEntryBluetoothReceiver.onceUseConditionsThenClear = String.valueOf(clickYes);
-//                Log.e(TAG, " 更新 onceUseConditionsThenClear 的值为: "+SafeEntryBluetoothReceiver.onceUseConditionsThenClear);
-
-                if (clickYes) {
-                    AccessibilityHelper.performClick(parent.getChild(7));
-                    Log.e(TAG, "模拟点击YES按钮");
-                } else {
-                    AccessibilityHelper.performClick(parent.getChild(8));
-                    Log.e(TAG, "模拟点击NO按钮");
-                }
+            if (currentPhoneRingState == TelephonyManager.CALL_STATE_OFFHOOK) {
+                XiaoMiTelHelper.findAllNode(nodeInfo, "0");
             }
+
         }
+
     }
 
 
@@ -143,5 +99,28 @@ index : 8   text: null
 
     }
 
+    PhoneStateListener listener = new PhoneStateListener() {
+        @Override
+        public void onCallStateChanged(int state, String incomingNumber) {
+            super.onCallStateChanged(state, incomingNumber);
+            currentPhoneRingState = state;
+
+            switch (state) {
+                case TelephonyManager.CALL_STATE_IDLE:
+                    Log.e(GlobalActionBarService.TAG, "挂断电话");
+                    Intent intent = new Intent(getApplicationContext(), SendDataIntentService.class);
+                    startService(intent);
+
+                    break;
+                case TelephonyManager.CALL_STATE_OFFHOOK:
+                    Log.e(GlobalActionBarService.TAG, "通话中");
+
+                    break;
+                case TelephonyManager.CALL_STATE_RINGING:
+                    Log.e(GlobalActionBarService.TAG, "来电 响铃");
+                    break;
+            }
+        }
+    };
 
 }

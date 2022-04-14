@@ -3,6 +3,7 @@ package com.vipheyue.simulateclick;
 import android.accessibilityservice.AccessibilityService;
 import android.os.Build;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import java.lang.reflect.Field;
@@ -60,6 +61,20 @@ public final class AccessibilityHelper {
             if(className.equals(node.getClassName())) {
                 return node;
             }
+        }
+        return null;
+    }
+
+
+    public static AccessibilityNodeInfo findAllNode(AccessibilityNodeInfo nodeInfo,String  parentIndex) {
+
+        if (nodeInfo == null) {
+            return null;
+        }
+        for (int currentIndex = 0; currentIndex < nodeInfo.getChildCount(); currentIndex++) {
+            AccessibilityNodeInfo node = nodeInfo.getChild(currentIndex);
+            Log.e(GlobalActionBarService.TAG, "parentIndex : " + parentIndex +"  currentIndex : " + currentIndex + "   text: " + node.getText());
+            findAllNode(node,parentIndex+" "+ currentIndex);
         }
         return null;
     }
