@@ -15,21 +15,6 @@ public class XiaoMiTelHelper {
     public static LinkedHashSet<String> telMsgSet = new LinkedHashSet<>();
     public static ArrayList<String> historyMsgList = new ArrayList<String>();
 
-    public LinkedHashSet<String> getTelMsgSet() {
-        return telMsgSet;
-    }
-
-    public void setTelMsgSet(LinkedHashSet<String> telMsgSet) {
-        this.telMsgSet = telMsgSet;
-    }
-
-    public static ArrayList<String> getHistoryMsgList() {
-        return historyMsgList;
-    }
-
-    public static void setHistoryMsgList(ArrayList<String> historyMsgList) {
-        XiaoMiTelHelper.historyMsgList = historyMsgList;
-    }
 
     public static AccessibilityNodeInfo findAllNode(AccessibilityNodeInfo nodeInfo, String parentIndex) {
 
@@ -44,8 +29,8 @@ public class XiaoMiTelHelper {
                 String msg = String.valueOf(node.getText());
 
                 if (!telMsgSet.contains(msg) && !Arrays.asList(ignoreTitle).contains(msg)) {
-                    Log.e(GlobalActionBarService.TAG, "添加数据：" + msg);
-                    telMsgSet.add(msg);
+//                    telMsgSet.add(msg);
+                    addString(msg);
                 }
 
             }
@@ -59,5 +44,26 @@ public class XiaoMiTelHelper {
         }
         return null;
     }
+
+
+    private static void addString(String needAddString) {
+        XiaoMiTelHelper.telMsgSet.add(needAddString);
+        removeRedundantString(needAddString);
+    }
+
+    private static void removeRedundantString(String needAddString) {
+        if (needAddString.length() == 0) {
+            return;
+        }
+
+        String lastString = needAddString.substring(0, needAddString.length() - 1);
+
+        boolean contains = XiaoMiTelHelper.telMsgSet.contains(lastString);
+        if (contains) {
+            XiaoMiTelHelper.telMsgSet.remove(lastString);
+        }
+        removeRedundantString(lastString);
+    }
+
 
 }

@@ -108,6 +108,8 @@ public class GlobalActionBarService extends AccessibilityService {
             switch (state) {
                 case TelephonyManager.CALL_STATE_IDLE:
                     Log.e(GlobalActionBarService.TAG, "挂断电话");
+                    // 整理重复数据
+
                     Intent intent = new Intent(getApplicationContext(), SendDataIntentService.class);
                     startService(intent);
 
